@@ -1,0 +1,80 @@
+---
+title: "SNA Image Matrix"
+author: "許sir"
+
+---
+
+### **[實作1]:** 建立台灣縣市相鄰矩陣，利用Rigraph(or sna)繪製各縣市的相鄰網絡圖
+
+### [.設定所需的函式庫(libraries)以及載入資料]
+```{r message=FALSE, warning=FALSE, results='hide'}
+library(igraph)
+
+setwd("D:/Rdata Practice/SNA/HW_NetViz")
+data<- "TW_county_el.csv" #這是台灣縣市的鄰近矩陣
+el<-read.table(data, header=T, sep=",")
+el
+
+data<- "Party.csv" #這是政檔屬性資料表
+p<-read.table(data, header=T, sep=",") #P是一個dataframe，但排列順序一定跟上面的el不同
+nrow(p)
+```
+
+
+#### 1-1.基本資料呈現
+```{r message=FALSE, warning=FALSE, results='hide'}
+g=graph.data.frame(el,directed=FALSE) 
+plot(g)
+V(g) #有幾個節點
+E(g) #有幾條tie
+
+V(g)$name
+```
+
+
+### **[實習2]:** 建立台灣縣市首長的黨籍屬性(藍、綠或無黨)，利用矩陣運算建立image matrix，並說明該矩陣所表示的意涵。
+
+#### 2-1.將igraph 轉成 matrix，才方便後續計算
+```{r message=FALSE, warning=FALSE, results='hide'}
+m<-get.adjacency(g) #get.adjacency為把igraph --> matrix
+m #這是矩陣，但是是稀疏矩陣，所以要轉成正常的矩陣
+str(m)
+m2<-as.matrix(m) #轉成正常的矩陣
+```
+
+
+#### 2-2.建新的欄位名稱
+- V是節點資料，所以我要建新的欄位名稱
+
+```{r message=FALSE, warning=FALSE, results='hide'}
+# DPP[i] <- p$DPP[V(g)$name[i]==p$X] 後面這一串是屬性資料，把p$X 之DPP的欄位放到新的欄位
+for(i in 1:19){
+V(g)$DPP[i] <- p$DPP[V(g)$name[i]==p$X]
+V(g)$KMT[i] <- p$KMT[V(g)$name[i]==p$X] 
+V(g)$N[i] <- p$N[V(g)$name[i]==p$X]
+}
+
+d <- seq(1,57,1) #建一個新的矩陣
+Mparty<-matrix(d, nrow=19, ncol=3, byrow=T) #19行、3個col
+Mparty[,1] <- V(g)$DPP
+Mparty[,2] <- V(g)$KMT
+Mparty[,3] <- V(g)$N
+```
+
+#### 2-3.轉置矩陣
+```{r message=FALSE, warning=FALSE, results='hide'}
+R<- t(Mparty) %*% m2 %*% Mparty #t(Mparty)轉置矩陣
+colnames(R)<-rownames(R)<-c("DPP", "KMT", "N") 
+R #R是最後答案
+```
+
+#### 2-4.畫圖
+```{r message=FALSE, warning=FALSE, results='hide'}
+g1=graph.adjacency(R,mode="undirected",weighted=TRUE)
+?graph.adjacency
+V(g1); E(g1)
+E(g1)$weight
+plot(g1, vertex.color="yellow",  edge.color="black", edge.width=E(g1)$weight/2, vertex.size=20, main='Taiwan Party Graph')
+#edge.width是線段粗細。weight/2只是為了畫面好看
+```
+
